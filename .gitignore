@@ -1,0 +1,7 @@
+.DS_Store
+dist/*
+!dist/.gitkeep
+JSignPDF.app/
+JSignPDF-AllInOne.app/
+ePass2003_MAC_iOS.zip
+vendor/*.dylib

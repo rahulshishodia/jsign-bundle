@@ -1,0 +1,29 @@
+#!/bin/zsh
+
+set -u
+unsetopt BG_NICE
+
+CONTENTS_DIR="${0:A:h:h}"
+APP_BUNDLE="${CONTENTS_DIR:h}"
+INTEGRATION_DIR="$CONTENTS_DIR/Resources/AllInOne"
+CONFIG_DIR="${JSIGNPDF_CONFIG_DIR:-$HOME/Library/Application Support/JSignPdf-AllInOne}"
+PKCS11_CONFIG="$CONFIG_DIR/pkcs11.cfg"
+DRIVER_PATH="$INTEGRATION_DIR/libcastle_v2.1.0.0.dylib"
+ORIGINAL_EXECUTABLE="$(<"$INTEGRATION_DIR/original-executable")"
+
+mkdir -p "$CONFIG_DIR"
+
+# Keep this location current even when the user moves or updates the app.
+PKCS11_CONFIG_TMP="$PKCS11_CONFIG.$$"
+{
+  print -r -- '# Managed by JSignPDF All-in-One.'
+  print -r -- 'name=HYP2003'
+  print -r -- "library=\"$DRIVER_PATH\""
+} > "$PKCS11_CONFIG_TMP"
+mv -f "$PKCS11_CONFIG_TMP" "$PKCS11_CONFIG"
+
+# The check is detached so startup is never held up by the network.
+"$INTEGRATION_DIR/update.sh" "$APP_BUNDLE" "$$" >/dev/null 2>&1 &
+
+export JSIGNPDF_CONFIG_DIR="$CONFIG_DIR"
+exec "$CONTENTS_DIR/MacOS/$ORIGINAL_EXECUTABLE" "$@"

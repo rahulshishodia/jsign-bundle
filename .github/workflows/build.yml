@@ -1,0 +1,68 @@
+name: Build upstream bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_tag:
+        description: Optional upstream tag, for example JSignPdf_3_1_0
+        required: false
+        type: string
+  schedule:
+    - cron: '17 4 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jsignpdf-upstream-bundle
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Fetch private ePass middleware
+        env:
+          DRIVER_URL: ${{ secrets.EPASS_DRIVER_URL }}
+          DRIVER_SHA256: ${{ secrets.EPASS_DRIVER_SHA256 }}
+          DRIVER_TOKEN: ${{ secrets.EPASS_DRIVER_TOKEN }}
+        run: |
+          test -n "$DRIVER_URL"
+          test -n "$DRIVER_SHA256"
+          mkdir -p vendor
+          if test -n "$DRIVER_TOKEN"; then
+            curl -fL --retry 3 \
+              -H "Authorization: Bearer $DRIVER_TOKEN" \
+              -o vendor/libcastle_v2.1.0.0.dylib "$DRIVER_URL"
+          else
+            curl -fL --retry 3 \
+              -o vendor/libcastle_v2.1.0.0.dylib "$DRIVER_URL"
+          fi
+          echo "$DRIVER_SHA256  vendor/libcastle_v2.1.0.0.dylib" | shasum -a 256 -c -
+
+      - name: Build and verify bundle
+        env:
+          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+        run: ./scripts/build_bundle.sh "$UPSTREAM_TAG"
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat dist/VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish new release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists."
+            exit 0
+          fi
+          gh release create "v$VERSION" \
+            "dist/JSignPDF-AllInOne-$VERSION-macos-aarch64.zip" \
+            "dist/JSignPDF-AllInOne-$VERSION-macos-aarch64.zip.sha256" \
+            --title "JSignPDF All-in-One $VERSION" \
+            --notes "Automated Apple Silicon bundle based on upstream JSignPDF $VERSION, with an embedded Java runtime and HYPERSECU/ePass2003 PKCS#11 support."

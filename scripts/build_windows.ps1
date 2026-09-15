@@ -51,9 +51,11 @@ try {
     $driverInner = Join-Path $work 'driver-inner'
     New-Item -ItemType Directory -Path $driverInner | Out-Null
     & 7z x -y "-o$driverInner" $setup.FullName | Out-Null
-    $driver = Get-ChildItem $driverInner -Recurse -File -Filter 'eps2003csp11*.dll' |
-        Where-Object { (Get-PeMachine $_.FullName) -eq 0x8664 } | Select-Object -First 1
-    if (-not $driver) { throw 'No x64 eps2003 PKCS#11 DLL found in official middleware' }
+    $driver = Get-ChildItem $driverInner -Recurse -File -Filter '*.dll' | Where-Object {
+        (Get-PeMachine $_.FullName) -eq 0x8664 -and
+        [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($_.FullName)).Contains('C_GetFunctionList')
+    } | Select-Object -First 1
+    if (-not $driver) { throw 'No x64 PKCS#11 module found in official middleware' }
 
     $output = Join-Path $dist 'JSignPDF-AllInOne-windows-x64'
     Remove-Item -Recurse -Force $output -ErrorAction SilentlyContinue
@@ -61,6 +63,9 @@ try {
     $integration = Join-Path $output 'AllInOne'
     New-Item -ItemType Directory -Path $integration | Out-Null
     Copy-Item $driver.FullName (Join-Path $integration 'eps2003csp11.dll')
+    Get-ChildItem $driver.Directory.FullName -File -Filter '*.dll' | Where-Object {
+        $_.FullName -ne $driver.FullName -and (Get-PeMachine $_.FullName) -eq 0x8664
+    } | Copy-Item -Destination $integration
     Copy-Item (Join-Path $root 'templates\update-windows.ps1') $integration
     Set-Content -NoNewline (Join-Path $integration 'original-executable') ($original.FullName.Substring($appRoot.FullName.Length + 1))
     Set-Content -NoNewline (Join-Path $integration 'version') $version

@@ -93,5 +93,5 @@ jobs:
             gh release create "v$VERSION" release/*.zip release/*.sha256 \
               --repo "$GITHUB_REPOSITORY" \
               --title "JSignPDF All-in-One $VERSION" \
-              --notes "Automated macOS Apple Silicon, Windows x64, and Linux x64 bundles based on upstream JSignPDF $VERSION, with embedded Java runtimes and ePass2003/HYP2003 PKCS#11 support."
+              --notes "Automated macOS Apple Silicon, Windows x64, and Linux x64 bundles based on upstream JSignPDF $VERSION, with embedded Java runtimes and HYP2003 PKCS#11 support."
           fi

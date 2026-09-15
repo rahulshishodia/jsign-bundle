@@ -44,15 +44,16 @@ manual dispatch. It verifies the upstream release assets' SHA-256 digests,
 builds all three bundles, and creates or refreshes `v<upstream-version>`.
 
 No repository secrets are required. Middleware is downloaded from pinned public
-URLs and verified before being included. The macOS source is eMudhra's public
-`ePass2003_MAC_iOS.zip`; the Windows source is Hypersecu's current public
+URLs and verified before being included. The macOS source is nCode Solutions'
+public HYP2003 package, with both the archive and the known-working Feitian
+module checksums pinned. The Windows source is Hypersecu's current public
 HYP2003 middleware. The Linux module is a checksum-pinned archival copy and
 should be replaced if the vendor publishes a current Linux package.
 
-OpenSC supports standard Feitian ePass2003 tokens and is a good open-source
-alternative when the token appears through CCID/PCSC. It is not the default here
-because some HYP2003/eMudhra variants—including the device used to validate this
-bundle—do not expose a reader or slot to OpenSC, while the vendor module works.
+OpenSC can reach HYP2003 hardware through CCID/PCSC, but it cannot expose this
+token through PKCS#11 because the token uses Feitian's EnterSafe layout instead
+of a PKCS#15 directory. The vendor module is therefore required. The macOS
+module used here was validated against a connected Hypersecu HYP2003 token.
 
 ## Third-party notice
 

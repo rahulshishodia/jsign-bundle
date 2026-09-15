@@ -41,7 +41,9 @@ UPSTREAM_ARCHIVE=/path/to/jsignpdf-3.1.0-macos-aarch64.zip \
 
 The `Build upstream bundles` workflow runs after relevant pushes, daily, and on
 manual dispatch. It verifies the upstream release assets' SHA-256 digests,
-builds all three bundles, and creates or refreshes `v<upstream-version>`.
+builds all three bundles, and publishes a revisioned release such as
+`v3.2.0.2` (upstream JSignPDF 3.2.0, bundle revision 2). The separate bundle
+revision lets packaging-only fixes reach the launch-time updater.
 
 No repository secrets are required. Middleware is downloaded from pinned public
 URLs and verified before being included. The macOS source is nCode Solutions'

@@ -5,6 +5,7 @@ set -u
 APP_BUNDLE="$1"
 APP_PID="$2"
 INFO_PLIST="$APP_BUNDLE/Contents/Info.plist"
+VERSION_FILE="$APP_BUNDLE/Contents/Resources/AllInOne/version"
 CACHE_DIR="${JSIGNPDF_UPDATE_CACHE_DIR:-$HOME/Library/Caches/com.rahuls.jsignpdf.allinone}"
 METADATA_FILE="$CACHE_DIR/latest-release.json"
 SKIPPED_FILE="$CACHE_DIR/skipped-version"
@@ -19,7 +20,11 @@ mv -f "$METADATA_FILE.tmp" "$METADATA_FILE"
 
 LATEST_TAG="$(/usr/bin/plutil -extract tag_name raw "$METADATA_FILE" 2>/dev/null)" || exit 0
 LATEST_VERSION="${LATEST_TAG#v}"
-CURRENT_VERSION="$(/usr/bin/plutil -extract CFBundleShortVersionString raw "$INFO_PLIST" 2>/dev/null)" || exit 0
+if [[ -f "$VERSION_FILE" ]]; then
+  CURRENT_VERSION="$(<"$VERSION_FILE")"
+else
+  CURRENT_VERSION="$(/usr/bin/plutil -extract CFBundleShortVersionString raw "$INFO_PLIST" 2>/dev/null)" || exit 0
+fi
 
 [[ -n "$LATEST_VERSION" && "$LATEST_VERSION" != "$CURRENT_VERSION" ]] || exit 0
 if [[ -f "$SKIPPED_FILE" && "$(<"$SKIPPED_FILE")" == "$LATEST_VERSION" ]]; then

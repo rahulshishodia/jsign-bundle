@@ -35,6 +35,7 @@ PY
 TAG="${RELEASE[0]}"
 VERSION="${TAG#JSignPdf_}"
 VERSION="${VERSION//_/.}"
+BUNDLE_VERSION="${VERSION}.2"
 ARCHIVE="$WORK_DIR/${RELEASE[1]}"
 curl -fL --retry 3 -o "$ARCHIVE" "${RELEASE[2]}"
 echo "${RELEASE[3]#sha256:}  $ARCHIVE" | sha256sum -c -
@@ -57,9 +58,9 @@ echo "$LINUX_DRIVER_SHA256  $OUTPUT/AllInOne/libcastle.so.1.0.0" | sha256sum -c 
 cp "$ROOT_DIR/templates/linux-launcher.sh" "$OUTPUT/JSignPDF-AllInOne"
 cp "$ROOT_DIR/templates/update-linux.sh" "$OUTPUT/AllInOne/update-linux.sh"
 printf '%s\n' "$ORIGINAL_RELATIVE" > "$OUTPUT/AllInOne/original-executable"
-printf '%s\n' "$VERSION" > "$OUTPUT/AllInOne/version"
+printf '%s\n' "$BUNDLE_VERSION" > "$OUTPUT/AllInOne/version"
 chmod 755 "$OUTPUT/JSignPDF-AllInOne" "$OUTPUT/AllInOne/update-linux.sh" "$OUTPUT/AllInOne/libcastle.so.1.0.0"
 
-(cd "$DIST_DIR" && zip -qr "JSignPDF-AllInOne-$VERSION-linux-x64.zip" "$(basename "$OUTPUT")")
-(cd "$DIST_DIR" && sha256sum "JSignPDF-AllInOne-$VERSION-linux-x64.zip" > "JSignPDF-AllInOne-$VERSION-linux-x64.zip.sha256")
-printf '%s\n' "$VERSION" > "$DIST_DIR/VERSION"
+(cd "$DIST_DIR" && zip -qr "JSignPDF-AllInOne-$BUNDLE_VERSION-linux-x64.zip" "$(basename "$OUTPUT")")
+(cd "$DIST_DIR" && sha256sum "JSignPDF-AllInOne-$BUNDLE_VERSION-linux-x64.zip" > "JSignPDF-AllInOne-$BUNDLE_VERSION-linux-x64.zip.sha256")
+printf '%s\n' "$BUNDLE_VERSION" > "$DIST_DIR/VERSION"

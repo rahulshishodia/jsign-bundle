@@ -8,12 +8,23 @@ APP_BUNDLE="${CONTENTS_DIR:h}"
 INTEGRATION_DIR="$CONTENTS_DIR/Resources/AllInOne"
 CONFIG_DIR="${JSIGNPDF_CONFIG_DIR:-$HOME/Library/Application Support/JSignPdf-AllInOne}"
 PKCS11_CONFIG="$CONFIG_DIR/pkcs11.cfg"
-DRIVER_PATH="$INTEGRATION_DIR/libcastle_v2.1.0.0.dylib"
+BUNDLED_DRIVER="$INTEGRATION_DIR/libcastle_v2.1.0.0.dylib"
+DRIVER_PATH="$CONFIG_DIR/libcastle_v2.1.0.0.dylib"
 ORIGINAL_EXECUTABLE="$(<"$INTEGRATION_DIR/original-executable")"
 
 mkdir -p "$CONFIG_DIR"
 
-# Keep this location current even when the user moves or updates the app.
+# A quarantined app opened outside /Applications may run from a temporary
+# AppTranslocation path. Keep the native module at a stable per-user location
+# so the generated SunPKCS11 configuration remains valid.
+if [[ ! -f "$DRIVER_PATH" ]] || ! /usr/bin/cmp -s "$BUNDLED_DRIVER" "$DRIVER_PATH"; then
+  DRIVER_TMP="$CONFIG_DIR/.libcastle_v2.1.0.0.dylib.$$"
+  /bin/cp "$BUNDLED_DRIVER" "$DRIVER_TMP"
+  /bin/chmod 755 "$DRIVER_TMP"
+  /bin/mv -f "$DRIVER_TMP" "$DRIVER_PATH"
+fi
+
+# Keep the provider configuration current when the app updates.
 PKCS11_CONFIG_TMP="$PKCS11_CONFIG.$$"
 {
   print -r -- '# Managed by JSignPDF All-in-One.'

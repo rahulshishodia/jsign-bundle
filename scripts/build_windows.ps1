@@ -30,6 +30,7 @@ try {
     }
     $release = Invoke-RestMethod -Uri $api -Headers $apiHeaders
     $version = ([string]$release.tag_name -replace '^JSignPdf_', '') -replace '_', '.'
+    $bundleVersion = "$version.2"
     $asset = $release.assets | Where-Object { $_.name -like 'jsignpdf-*-windows-x64.zip' } | Select-Object -First 1
     if (-not $asset -or $asset.digest -notlike 'sha256:*') { throw 'No checksum-bearing Windows x64 ZIP found' }
     $archive = Join-Path $work $asset.name
@@ -71,16 +72,16 @@ try {
     } | Copy-Item -Destination $integration
     Copy-Item (Join-Path $root 'templates\update-windows.ps1') $integration
     Set-Content -NoNewline (Join-Path $integration 'original-executable') ($original.FullName.Substring($appRoot.FullName.Length + 1))
-    Set-Content -NoNewline (Join-Path $integration 'version') $version
+    Set-Content -NoNewline (Join-Path $integration 'version') $bundleVersion
     Add-Type -TypeDefinition (Get-Content (Join-Path $root 'templates\WindowsLauncher.cs') -Raw) `
         -Language CSharp -OutputAssembly (Join-Path $output 'JSignPDF-AllInOne.exe') -OutputType WindowsApplication
 
-    $outputZip = Join-Path $dist "JSignPDF-AllInOne-$version-windows-x64.zip"
+    $outputZip = Join-Path $dist "JSignPDF-AllInOne-$bundleVersion-windows-x64.zip"
     Remove-Item -Force $outputZip -ErrorAction SilentlyContinue
     Compress-Archive -Path $output -DestinationPath $outputZip
     $hash = (Get-FileHash -Algorithm SHA256 $outputZip).Hash.ToLowerInvariant()
     Set-Content ("$outputZip.sha256") "$hash  $(Split-Path -Leaf $outputZip)"
-    Set-Content (Join-Path $dist 'VERSION') $version
+    Set-Content (Join-Path $dist 'VERSION') $bundleVersion
 } finally {
     Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 }

@@ -69,6 +69,7 @@ curl "${CURL_API_ARGS[@]}" -fsSL -o "$METADATA" "$RELEASE_API"
 UPSTREAM_TAG="$(plutil -extract tag_name raw "$METADATA")"
 VERSION="${UPSTREAM_TAG#JSignPdf_}"
 VERSION="${VERSION//_/.}"
+BUNDLE_VERSION="${VERSION}.2"
 
 ASSET_URL=''
 ASSET_DIGEST=''
@@ -124,6 +125,7 @@ ditto "$VENDOR_DRIVER" "$INTEGRATION_DIR/libcastle_v2.1.0.0.dylib"
 ditto "$ROOT_DIR/templates/update.sh" "$INTEGRATION_DIR/update.sh"
 ditto "$ROOT_DIR/templates/JSignPdfLauncher" "$OUTPUT_APP/Contents/MacOS/JSignPdfLauncher"
 printf '%s\n' "$ORIGINAL_EXECUTABLE" > "$INTEGRATION_DIR/original-executable"
+printf '%s\n' "$BUNDLE_VERSION" > "$INTEGRATION_DIR/version"
 chmod 755 "$OUTPUT_APP/Contents/MacOS/JSignPdfLauncher" "$INTEGRATION_DIR/update.sh"
 
 /usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable JSignPdfLauncher' "$INFO_PLIST"
@@ -143,10 +145,10 @@ else
   exit 1
 fi
 
-OUTPUT_ZIP="$DIST_DIR/JSignPDF-AllInOne-$VERSION-macos-aarch64.zip"
+OUTPUT_ZIP="$DIST_DIR/JSignPDF-AllInOne-$BUNDLE_VERSION-macos-aarch64.zip"
 rm -f "$OUTPUT_ZIP" "$OUTPUT_ZIP.sha256"
 ditto -c -k --sequesterRsrc --keepParent "$OUTPUT_APP" "$OUTPUT_ZIP"
 (cd "$DIST_DIR" && shasum -a 256 "$(basename "$OUTPUT_ZIP")" > "$(basename "$OUTPUT_ZIP").sha256")
-printf '%s\n' "$VERSION" > "$DIST_DIR/VERSION"
+printf '%s\n' "$BUNDLE_VERSION" > "$DIST_DIR/VERSION"
 
 echo "Built $OUTPUT_ZIP"

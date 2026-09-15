@@ -13,6 +13,10 @@ HYP2003_MODULE_SHA256='3e7b9e91a861fccbafa9e992daa4c3c4746d9a20eb99e2f43ac860037
 command -v curl >/dev/null
 command -v plutil >/dev/null
 command -v codesign >/dev/null
+CURL_API_ARGS=()
+if [[ -n "${GITHUB_TOKEN:-${GH_TOKEN:-}}" ]]; then
+  CURL_API_ARGS=(-H "Authorization: Bearer ${GITHUB_TOKEN:-$GH_TOKEN}")
+fi
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/jsignpdf-build.XXXXXX")"
 MOUNT_POINT=''
 cleanup() {
@@ -61,7 +65,7 @@ else
 fi
 
 METADATA="$WORK_DIR/release.json"
-curl -fsSL -o "$METADATA" "$RELEASE_API"
+curl "${CURL_API_ARGS[@]}" -fsSL -o "$METADATA" "$RELEASE_API"
 UPSTREAM_TAG="$(plutil -extract tag_name raw "$METADATA")"
 VERSION="${UPSTREAM_TAG#JSignPdf_}"
 VERSION="${VERSION//_/.}"

@@ -6,6 +6,9 @@ $dist = Join-Path $root 'dist'
 $work = Join-Path $env:TEMP ("jsignpdf-win-build-" + [Guid]::NewGuid().ToString('N'))
 $driverUrl = 'https://www.hypersecu.com/_files/archives/5aae8d_02fba2ca3532483c91e6cd958874b1e4.zip?dn=HyperPKI-HYP2003-Middleware-Windows-v1.1.25.731.zip'
 $driverSha256 = 'cc77ea230cbc2216d0ef7bf3a7d79b14c4c3204a69577b918d1ba781fa2fe350'
+$apiHeaders = @{}
+$apiToken = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } elseif ($env:GH_TOKEN) { $env:GH_TOKEN } else { $null }
+if ($apiToken) { $apiHeaders.Authorization = "Bearer $apiToken" }
 New-Item -ItemType Directory -Force -Path $work, $dist | Out-Null
 
 function Get-PeMachine([string]$Path) {
@@ -25,7 +28,7 @@ try {
     } else {
         $api = 'https://api.github.com/repos/intoolswetrust/jsignpdf/releases/latest'
     }
-    $release = Invoke-RestMethod -Uri $api
+    $release = Invoke-RestMethod -Uri $api -Headers $apiHeaders
     $version = ([string]$release.tag_name -replace '^JSignPdf_', '') -replace '_', '.'
     $asset = $release.assets | Where-Object { $_.name -like 'jsignpdf-*-windows-x64.zip' } | Select-Object -First 1
     if (-not $asset -or $asset.digest -notlike 'sha256:*') { throw 'No checksum-bearing Windows x64 ZIP found' }

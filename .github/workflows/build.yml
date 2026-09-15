@@ -30,6 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build and verify macOS Apple Silicon bundle
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/build_bundle.sh "${{ inputs.upstream_tag }}"
       - uses: actions/upload-artifact@v4
         with:
@@ -44,6 +46,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build and verify Linux x64 bundle
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/build_linux.sh "${{ inputs.upstream_tag }}"
       - uses: actions/upload-artifact@v4
         with:
@@ -59,6 +63,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build and verify Windows x64 bundle
         shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/build_windows.ps1 "${{ inputs.upstream_tag }}"
       - uses: actions/upload-artifact@v4
         with:

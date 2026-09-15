@@ -8,6 +8,10 @@ REQUESTED_TAG="${1:-}"
 UPSTREAM_REPO='intoolswetrust/jsignpdf'
 LINUX_DRIVER_URL='https://raw.githubusercontent.com/marcotuliomatos/ePass2003-SDK-Linux/c223d5380ab4c791c06951e08dd83587efc043e5/x86_64/redist/libcastle.so.1.0.0'
 LINUX_DRIVER_SHA256='59c8c77f6248ba1acae89f61d3ee44abc298c8efd2cf9e16aba892c909d68ed4'
+CURL_API_ARGS=()
+if [[ -n "${GITHUB_TOKEN:-${GH_TOKEN:-}}" ]]; then
+  CURL_API_ARGS=(-H "Authorization: Bearer ${GITHUB_TOKEN:-$GH_TOKEN}")
+fi
 
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/jsignpdf-linux-build.XXXXXX")"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -16,7 +20,7 @@ if [[ -n "$REQUESTED_TAG" ]]; then
 else
   RELEASE_API="https://api.github.com/repos/$UPSTREAM_REPO/releases/latest"
 fi
-curl -fsSL -o "$WORK_DIR/release.json" "$RELEASE_API"
+curl "${CURL_API_ARGS[@]}" -fsSL -o "$WORK_DIR/release.json" "$RELEASE_API"
 readarray -t RELEASE < <(python3 - "$WORK_DIR/release.json" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1], encoding="utf-8"))

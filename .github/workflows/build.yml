@@ -1,6 +1,13 @@
-name: Build upstream bundle
+name: Build upstream bundles
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build.yml'
+      - 'scripts/**'
+      - 'templates/**'
+      - 'vendor/**'
   workflow_dispatch:
     inputs:
       upstream_tag:
@@ -14,55 +21,77 @@ permissions:
   contents: write
 
 concurrency:
-  group: jsignpdf-upstream-bundle
+  group: jsignpdf-upstream-bundles
   cancel-in-progress: false
 
 jobs:
-  build:
+  macos:
     runs-on: macos-15
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Build and verify macOS Apple Silicon bundle
+        run: ./scripts/build_bundle.sh "${{ inputs.upstream_tag }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-aarch64
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/VERSION
 
-      - name: Fetch private ePass middleware
-        env:
-          DRIVER_URL: ${{ secrets.EPASS_DRIVER_URL }}
-          DRIVER_SHA256: ${{ secrets.EPASS_DRIVER_SHA256 }}
-          DRIVER_TOKEN: ${{ secrets.EPASS_DRIVER_TOKEN }}
-        run: |
-          test -n "$DRIVER_URL"
-          test -n "$DRIVER_SHA256"
-          mkdir -p vendor
-          if test -n "$DRIVER_TOKEN"; then
-            curl -fL --retry 3 \
-              -H "Authorization: Bearer $DRIVER_TOKEN" \
-              -o vendor/libcastle_v2.1.0.0.dylib "$DRIVER_URL"
-          else
-            curl -fL --retry 3 \
-              -o vendor/libcastle_v2.1.0.0.dylib "$DRIVER_URL"
-          fi
-          echo "$DRIVER_SHA256  vendor/libcastle_v2.1.0.0.dylib" | shasum -a 256 -c -
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and verify Linux x64 bundle
+        run: ./scripts/build_linux.sh "${{ inputs.upstream_tag }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/VERSION
 
-      - name: Build and verify bundle
-        env:
-          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
-        run: ./scripts/build_bundle.sh "$UPSTREAM_TAG"
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and verify Windows x64 bundle
+        shell: powershell
+        run: ./scripts/build_windows.ps1 "${{ inputs.upstream_tag }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/VERSION
 
-      - name: Read version
-        id: version
-        run: echo "version=$(cat dist/VERSION)" >> "$GITHUB_OUTPUT"
-
+  release:
+    needs: [macos, linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-x64'
+          path: release
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-aarch64
+          path: release
       - name: Publish new release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          if gh release view "v$VERSION" >/dev/null 2>&1; then
-            echo "Release v$VERSION already exists."
-            exit 0
+          VERSION="$(cat release/VERSION)"
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "v$VERSION" release/*.zip release/*.sha256 \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "v$VERSION" release/*.zip release/*.sha256 \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "JSignPDF All-in-One $VERSION" \
+              --notes "Automated macOS Apple Silicon, Windows x64, and Linux x64 bundles based on upstream JSignPDF $VERSION, with embedded Java runtimes and ePass2003/HYP2003 PKCS#11 support."
           fi
-          gh release create "v$VERSION" \
-            "dist/JSignPDF-AllInOne-$VERSION-macos-aarch64.zip" \
-            "dist/JSignPDF-AllInOne-$VERSION-macos-aarch64.zip.sha256" \
-            --title "JSignPDF All-in-One $VERSION" \
-            --notes "Automated Apple Silicon bundle based on upstream JSignPDF $VERSION, with an embedded Java runtime and HYPERSECU/ePass2003 PKCS#11 support."

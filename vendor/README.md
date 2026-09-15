@@ -1,7 +1,6 @@
 # Vendor middleware
 
-The HYPERSECU/ePass2003 `libcastle_v2.1.0.0.dylib` file is intentionally not
-stored in Git. For local builds, place an authorized copy in this directory.
-For GitHub Actions builds, configure `EPASS_DRIVER_URL` and
-`EPASS_DRIVER_SHA256` as repository secrets. Use the optional
-`EPASS_DRIVER_TOKEN` secret when the URL requires bearer authentication.
+No middleware binary is stored in Git. The platform build scripts download
+checksum-pinned public packages when they run. macOS and Windows use public
+vendor/eMudhra downloads. The Linux build uses a pinned public archival copy
+because no current vendor-hosted Linux package is available.

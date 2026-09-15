@@ -4,23 +4,47 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
-VENDOR_DRIVER="${EPASS_DRIVER_PATH:-$ROOT_DIR/vendor/libcastle_v2.1.0.0.dylib}"
 UPSTREAM_REPO='intoolswetrust/jsignpdf'
 REQUESTED_TAG="${1:-}"
+EPASS_MAC_URL='https://www.e-mudhra.com/Repository/downloads/ePass2003_MAC_iOS.zip'
+EPASS_MAC_SHA256='3708c8629765c6db22ae05cad891016e1e17c98bde04988e2cbfae9651b7749e'
 
 command -v curl >/dev/null
 command -v plutil >/dev/null
 command -v codesign >/dev/null
-[[ -f "$VENDOR_DRIVER" ]] || {
-  echo "Missing vendor driver: $VENDOR_DRIVER" >&2
-  exit 1
-}
-
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/jsignpdf-build.XXXXXX")"
+MOUNT_POINT=''
 cleanup() {
+  if [[ -n "$MOUNT_POINT" ]]; then
+    hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1 || true
+  fi
   rm -rf "$WORK_DIR"
 }
 trap cleanup EXIT
+
+if [[ -n "${EPASS_DRIVER_PATH:-}" ]]; then
+  VENDOR_DRIVER="$EPASS_DRIVER_PATH"
+else
+  EPASS_ARCHIVE="$WORK_DIR/epass-macos.zip"
+  curl -fL --retry 3 -o "$EPASS_ARCHIVE" "$EPASS_MAC_URL"
+  echo "$EPASS_MAC_SHA256  $EPASS_ARCHIVE" | shasum -a 256 -c -
+  EPASS_UNPACKED="$WORK_DIR/epass"
+  mkdir -p "$EPASS_UNPACKED"
+  unzip -q "$EPASS_ARCHIVE" -d "$EPASS_UNPACKED"
+  EPASS_DMG="$(find "$EPASS_UNPACKED" -type f -name '*.dmg' -print -quit)"
+  MOUNT_POINT="$WORK_DIR/epass-mount"
+  mkdir -p "$MOUNT_POINT"
+  hdiutil attach -readonly -nobrowse -mountpoint "$MOUNT_POINT" "$EPASS_DMG" >/dev/null
+  EPASS_PKG="$(find "$MOUNT_POINT" -maxdepth 2 -type f -name '*.pkg' -print -quit)"
+  EPASS_EXPANDED="$WORK_DIR/epass-pkg"
+  pkgutil --expand-full "$EPASS_PKG" "$EPASS_EXPANDED"
+  VENDOR_DRIVER="$(find "$EPASS_EXPANDED" -type f -name 'libcastle_v2.1.0.0.dylib' -print -quit)"
+fi
+
+[[ -f "$VENDOR_DRIVER" ]] || {
+  echo "Unable to locate the macOS ePass PKCS#11 library" >&2
+  exit 1
+}
 
 if [[ -n "$REQUESTED_TAG" ]]; then
   RELEASE_API="https://api.github.com/repos/$UPSTREAM_REPO/releases/tags/$REQUESTED_TAG"
@@ -110,7 +134,7 @@ fi
 OUTPUT_ZIP="$DIST_DIR/JSignPDF-AllInOne-$VERSION-macos-aarch64.zip"
 rm -f "$OUTPUT_ZIP" "$OUTPUT_ZIP.sha256"
 ditto -c -k --sequesterRsrc --keepParent "$OUTPUT_APP" "$OUTPUT_ZIP"
-shasum -a 256 "$OUTPUT_ZIP" > "$OUTPUT_ZIP.sha256"
+(cd "$DIST_DIR" && shasum -a 256 "$(basename "$OUTPUT_ZIP")" > "$(basename "$OUTPUT_ZIP").sha256")
 printf '%s\n' "$VERSION" > "$DIST_DIR/VERSION"
 
 echo "Built $OUTPUT_ZIP"
